@@ -30,6 +30,10 @@ export default class LocalStorage extends BaseStorage {
     });
   }
 
+  public async getPresignedPut(key: string) {
+    return this.getUrlForKey(key);
+  }
+
   public getUploadUrl() {
     return "/api/files.create";
   }
