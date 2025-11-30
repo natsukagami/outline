@@ -5,6 +5,7 @@ import {
   S3Client,
   DeleteObjectCommand,
   GetObjectCommand,
+  PutObjectCommand,
   HeadObjectCommand,
   CopyObjectCommand,
 } from "@aws-sdk/client-s3";
@@ -60,6 +61,16 @@ export default class S3Storage extends BaseStorage {
     return createPresignedPost(this.client, params);
   }
 
+  public async getPresignedPut(key: string) {
+    const params = {
+      Bucket: env.AWS_S3_UPLOAD_BUCKET_NAME,
+      Key: key,
+    };
+
+    const command = new PutObjectCommand(params);
+    return await getSignedUrl(this.client, command, { expiresIn: 3600 });
+  }
+
   private getPublicEndpoint(isServerUpload?: boolean) {
     if (env.AWS_S3_ACCELERATE_URL) {
       return env.AWS_S3_ACCELERATE_URL;
@@ -86,9 +97,8 @@ export default class S3Storage extends BaseStorage {
       return host;
     }
 
-    return `${host}/${isServerUpload && isDocker ? "s3/" : ""}${
-      env.AWS_S3_UPLOAD_BUCKET_NAME
-    }`;
+    return `${host}/${isServerUpload && isDocker ? "s3/" : ""}${env.AWS_S3_UPLOAD_BUCKET_NAME
+      }`;
   }
 
   public getUploadUrl(isServerUpload?: boolean) {
@@ -138,10 +148,17 @@ export default class S3Storage extends BaseStorage {
     );
   }
 
+  public getR2ObjectUrl = async (key: string) =>
+    env.AWS_S3_R2_PUBLIC_URL + "/" + key;
+
   public getSignedUrl = async (
     key: string,
     expiresIn = S3Storage.defaultSignedUrlExpires
   ) => {
+    if (env.AWS_S3_R2) {
+      return this.getR2ObjectUrl(key);
+    }
+
     const isDocker = env.AWS_S3_UPLOAD_BUCKET_URL.match(/http:\/\/s3:/);
     const params = {
       Bucket: this.getBucket(),
